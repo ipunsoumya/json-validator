@@ -1,0 +1,22 @@
+{
+  "PARTY_DETAILS_REQUIRED_FIELDS" : {
+    "PARTY_NAME_REQUIRED_FIELDS": [
+      {
+        "FIELD_NAME": "FULL_NAME",
+        "LENGTH": 255,
+        "FORMAT": "STRING",
+        "TRIM_FROM": "RIGHT",
+        "SEPARATOR": " ",
+        "DEFAULT_VALUE": "UNKNOWN"
+      },
+      {
+        "FIELD_NAME": "NAME1_NAME2",
+        "LENGTH": 255,
+        "FORMAT": "STRING",
+        "TRIM_FROM": "RIGHT",
+        "SEPARATOR": " ",
+        "DEFAULT_VALUE": "UNKNOWN"
+      }
+    ]
+  }
+}

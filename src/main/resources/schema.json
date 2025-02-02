@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "PARTY_DETAILS_REQUIRED_FIELDS": {
+      "type": "object",
+      "properties": {
+        "PARTY_NAME_REQUIRED_FIELDS": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["FIELD_NAME", "LENGTH", "FORMAT", "TRIM_FROM", "SEPARATOR", "DEFAULT_VALUE"],
+            "properties": {
+              "FIELD_NAME": {
+                "type": "string"
+              },
+              "LENGTH": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "FORMAT": {
+                "type": "string",
+                "enum": ["STRING"]
+              },
+              "TRIM_FROM": {
+                "type": "string",
+                "enum": ["RIGHT", "LEFT"]
+              },
+              "SEPARATOR": {
+                "type": "string"
+              },
+              "DEFAULT_VALUE": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": ["PARTY_NAME_REQUIRED_FIELDS"]
+    }
+  },
+  "required": ["PARTY_DETAILS_REQUIRED_FIELDS"]
+}
