@@ -1,113 +1,82 @@
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jackson.JsonLoader;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.stream.Stream;
 
 public class JsonValidator {
-    private static final Logger logger = LoggerFactory.getLogger(JsonValidator.class);
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static class ValidationResult {
-        private final String filePath;
-        private final boolean isValid;
-        private final List<String> errors;
-
-        public ValidationResult(String filePath, boolean isValid, List<String> errors) {
-            this.filePath = filePath;
-            this.isValid = isValid;
-            this.errors = errors != null ? errors : new ArrayList<>();
-        }
-
-        public ValidationResult(String filePath, boolean isValid) {
-            this(filePath, isValid, new ArrayList<>());
-        }
-
-        public String getFilePath() { return filePath; }
-        public boolean isValid() { return isValid; }
-        public List<String> getErrors() { return errors; }
-    }
-
-    public static List<ValidationResult> validateMultipleJsonFiles(List<String> jsonPaths, String schemaPath) {
-        logger.info("Starting validation of {} files against schema: {}", jsonPaths.size(), schemaPath);
-
+    /**
+     * Validates a single JSON file against a provided JSON schema
+     *
+     * @param jsonFilePath Path to the JSON file to validate
+     * @param schemaFilePath Path to the JSON schema file
+     * @return ValidationResult containing validation status and messages
+     */
+    public static ValidationResult validateJsonFile(String jsonFilePath, String schemaFilePath) {
         try {
-            String schemaContent = loadFileContent(schemaPath).orElseThrow(() -> 
-                new RuntimeException("Failed to load schema file"));
-            logger.info("Schema loaded successfully");
+            // Read JSON file
+            JsonNode jsonNode = objectMapper.readTree(new File(jsonFilePath));
 
-            return jsonPaths.stream().map(jsonPath -> {
-                logger.info("Validating file: {}", jsonPath);
-                try {
-                    String jsonContent = loadFileContent(jsonPath).orElseThrow(() ->
-                        new RuntimeException("Failed to load JSON file"));
-                    boolean isValid = validateJsonContent(jsonContent, schemaContent);
-                    if (isValid) {
-                        logger.info("Validation successful for: {}", jsonPath);
-                        return new ValidationResult(jsonPath, true);
-                    } else {
-                        logger.error("Validation failed for: {}", jsonPath);
-                        return new ValidationResult(jsonPath, false);
-                    }
-                } catch (Exception e) {
-                    logger.error("Validation failed for: {} - {}", jsonPath, e.getMessage());
-                    List<String> errors = new ArrayList<>();
-                    errors.add(e.getMessage());
-                    return new ValidationResult(jsonPath, false, errors);
-                }
-            }).collect(Collectors.toList());
-        } catch (Exception e) {
-            logger.error("Schema loading failed: {}", e.getMessage());
-            return jsonPaths.stream()
-                .map(path -> new ValidationResult(path, false, 
-                    List.of("Schema loading failed: " + e.getMessage())))
-                .collect(Collectors.toList());
-        }
-    }
+            // Read JSON schema
+            JsonNode schemaNode = objectMapper.readTree(new File(schemaFilePath));
 
-    private static java.util.Optional<String> loadFileContent(String filePath) {
-        try {
-            return java.util.Optional.of(Files.readString(Paths.get(filePath)));
+            // Create schema factory
+            JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+            JsonSchema schema = schemaFactory.getSchema(schemaNode);
+
+            // Validate
+            Set<ValidationMessage> validationMessages = schema.validate(jsonNode);
+
+            return new ValidationResult(
+                    validationMessages.isEmpty(),
+                    validationMessages
+            );
         } catch (IOException e) {
-            logger.error("Error reading file: {}", e.getMessage());
-            return java.util.Optional.empty();
+            return new ValidationResult(false, null,
+                    "Error reading file: " + e.getMessage()
+            );
+        } catch (Exception e) {
+            return new ValidationResult(false, null,
+                    "Validation error: " + e.getMessage()
+            );
         }
     }
 
-    private static boolean validateJsonContent(String jsonContent, String schemaContent) {
-        try {
-            logger.debug("Creating JSON Schema factory");
-            JsonSchemaFactory factory = JsonSchemaFactory.byDefault();
+    /**
+     * Validates all JSON files in a given directory against a specific schema
+     *
+     * @param directoryPath Path to the directory containing JSON files
+     * @param schemaFilePath Path to the JSON schema file
+     * @return ValidationSummary containing results for all files
+     */
+    public static ValidationSummary validateJsonFilesInDirectory(String directoryPath, String schemaFilePath) {
+        ValidationSummary summary = new ValidationSummary();
 
-            logger.debug("Loading schema");
-            var jsonSchema = factory.getJsonSchema(JsonLoader.fromString(schemaContent));
-
-            logger.debug("Loading JSON content for validation");
-            var jsonToValidate = JsonLoader.fromString(jsonContent);
-
-            logger.debug("Performing validation");
-            var report = jsonSchema.validate(jsonToValidate);
-
-            if (report.isSuccess()) {
-                logger.debug("Validation successful");
-                return true;
-            } else {
-                var errors = new ArrayList<String>();
-                report.forEach(pm -> errors.add(pm.getMessage()));
-                logger.debug("Validation failed with {} errors", errors.size());
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("Error during validation", e);
-            return false;
+        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().toLowerCase().endsWith(".json"))
+                    .forEach(path -> {
+                        ValidationResult result = validateJsonFile(
+                                path.toString(),
+                                schemaFilePath
+                        );
+                        summary.addResult(path.getFileName().toString(), result);
+                    });
+        } catch (IOException e) {
+            summary.setOverallError("Error accessing directory: " + e.getMessage());
         }
+
+        return summary;
     }
 }

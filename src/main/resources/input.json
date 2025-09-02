@@ -18,5 +18,25 @@
         "DEFAULT_VALUE": "UNKNOWN"
       }
     ]
+  },
+  "FACILITATOR_REQUIRED_FIELDS": {
+    "FACILITATOR_ID_REQUIRED_FIELDS": [
+      {
+        "FIELD_NAME": "FACILITATOR_ID",
+        "LENGTH": 255,
+        "FORMAT": "STRING",
+        "TRIM_FROM": "RIGHT",
+        "SEPARATOR": " ",
+        "DEFAULT_VALUE": "UNKNOWN"
+      },
+      {
+        "FIELD_NAME": "FACILITATOR_ID_2",
+        "LENGTH": 255,
+        "FORMAT": "STRING",
+        "TRIM_FROM": "RIGHT",
+        "SEPARATOR": " ",
+        "DEFAULT_VALUE": "UNKNOWN"
+      }
+    ]
   }
 }
